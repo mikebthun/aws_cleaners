@@ -23,12 +23,15 @@ logger.setLevel(logging.INFO) #logging.DEBUG
 
 def help():
 
-  print " Usage: ami_cleaner.py --filter TEXT-TO-MATCH-AWS-SEARCH [--help] "
+  print " Usage: ami_cleaner.py --filter TEXT-TO-MATCH-AWS-SEARCH --regexp \".*BUILD-(\d+)-.*\" [--help] [--live]"
+  print "\t Common RegExp: \".*\d{4}-\d{2}-\d{2}-(\d+).*\""
 
- 
 def main(argv):
 
   search_filter=None
+  regexp=None
+  live=None
+ 
 
   # make sure command line arguments are valid
   try:
@@ -39,7 +42,9 @@ def main(argv):
       [ 
         'help',
         'verbose',
-        'filter='
+        'filter=',
+        'regexp=',
+        'live'
     
       ])
  
@@ -58,8 +63,12 @@ def main(argv):
       logger.setLevel(logging.DEBUG) 
     elif opt in ('', '--filter'):
       search_filter=arg
+    elif opt in ('', '--regexp'):
+      regexp=arg
+    elif opt in ('', '--live'):
+      live=True
 
-  if None in [search_filter]:
+  if None in [search_filter,regexp]:
     help()  	
     sys.exit(2)
 
@@ -89,12 +98,13 @@ def main(argv):
   for ami in amis['Images']:
     if search_filter in ami['Name']:
       # match the build name (get build id)
-      pattern = re.compile('.*BUILD-(\d+)-.*')
+      pattern = re.compile(regexp)
       match = pattern.match(ami['Name'])
+      pprint.pprint(ami['Name'])
 
-      if match:
+      if match: 
         working_set[ int(match.group(1)) ] = ami
- 
+       
 
   logger.info("Found %s AMIs matching %s", 
   	len(working_set), 
@@ -124,16 +134,25 @@ def main(argv):
 
       logger.info("Deleting AMI: %s image-id %s" % (working_set[key]['Name'],working_set[key]['ImageId'])  )
  
-      cmd = """aws ec2 deregister-image --image-id %s""" % working_set[key]['ImageId']
-    
-      (status,output) = commands.getstatusoutput(cmd)
-    
-      if status>0:
-        logger.error("Could not delete AMI: %s", cmd)
-        logger.error(output)
-        sys.exit(2)
+      dryRun = "--dry-run"
 
-      logger.info("[OK]")
+      if live:
+        dryRun = ""
+
+      cmd = """aws ec2 deregister-image --image-id %s %s""" % (
+       working_set[key]['ImageId'],
+       dryRun
+
+       )
+    
+      # (status,output) = commands.getstatusoutput(cmd)
+    
+      # if status>0:
+      #   logger.error("Could not delete AMI: %s", cmd)
+      #   logger.error(output)
+      #   sys.exit(2)
+
+      # logger.info("[OK]")
  
 
 if __name__ == "__main__":
