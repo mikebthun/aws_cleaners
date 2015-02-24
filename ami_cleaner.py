@@ -134,10 +134,13 @@ def main(argv):
 
       logger.info("Deleting AMI: %s image-id %s" % (working_set[key]['Name'],working_set[key]['ImageId'])  )
  
-      dryRun = "--dry-run"
+      
 
       if live:
         dryRun = ""
+      else:
+        dryRun = "--dry-run"
+        logger.warning("DRY RUN ONLY - No AMI's will be deleted")
 
       cmd = """aws ec2 deregister-image --image-id %s %s""" % (
        working_set[key]['ImageId'],
@@ -145,14 +148,14 @@ def main(argv):
 
        )
     
-      # (status,output) = commands.getstatusoutput(cmd)
+      (status,output) = commands.getstatusoutput(cmd)
     
-      # if status>0:
-      #   logger.error("Could not delete AMI: %s", cmd)
-      #   logger.error(output)
-      #   sys.exit(2)
+      if status>0:
+        logger.error("Could not delete AMI: %s", cmd)
+        logger.error(output)
+        sys.exit(2)
 
-      # logger.info("[OK]")
+      logger.info("[OK]")
  
 
 if __name__ == "__main__":
